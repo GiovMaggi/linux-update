@@ -2,8 +2,11 @@
 
 echo "Starting system update..."
 
+# Steps that fail are collected here and reported at the end
+FAILED=()
+
 # Refresh the package lists
-sudo apt update
+sudo apt update || FAILED+=("package lists (apt update)")
 
 # Upgrade system packages via apt
 # -y:                    answer yes to every prompt
@@ -12,16 +15,25 @@ sudo apt update
 #                        instead of asking what to do
 sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold
+    -o Dpkg::Options::=--force-confold \
+    || FAILED+=("system packages (apt upgrade)")
 
 # Update Flatpak applications
 if command -v flatpak >/dev/null; then
-    flatpak update -y
+    flatpak update -y || FAILED+=("Flatpak apps (flatpak update)")
 fi
 
 echo ""
 echo "=========================================="
-echo "All updates completed successfully!"
+if [ ${#FAILED[@]} -eq 0 ]; then
+    echo "All updates completed successfully!"
+else
+    echo "Some updates FAILED:"
+    for step in "${FAILED[@]}"; do
+        echo "  - $step"
+    done
+    echo "Scroll up to see the error messages."
+fi
 echo "=========================================="
 echo ""
 

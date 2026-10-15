@@ -2,18 +2,31 @@
 
 echo "Starting system update..."
 
+# Steps that fail are collected here and reported at the end
+FAILED=()
+
 # Update official packages, pacman, and AUR via yay
 # --noconfirm: answer every prompt with its default
 # --ask 20:    flip the two defaults that would cancel the update
 #              (4 = remove conflicting packages, 16 = skip packages with broken dependencies)
-yay -Syu --noconfirm --ask 20
+yay -Syu --noconfirm --ask 20 || FAILED+=("system packages (yay -Syu)")
 
 # Update Flatpak applications
-flatpak update -y
+if command -v flatpak >/dev/null; then
+    flatpak update -y || FAILED+=("Flatpak apps (flatpak update)")
+fi
 
 echo ""
 echo "=========================================="
-echo "All updates completed successfully!"
+if [ ${#FAILED[@]} -eq 0 ]; then
+    echo "All updates completed successfully!"
+else
+    echo "Some updates FAILED:"
+    for step in "${FAILED[@]}"; do
+        echo "  - $step"
+    done
+    echo "Scroll up to see the error messages."
+fi
 echo "=========================================="
 echo ""
 

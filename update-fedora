@@ -2,20 +2,31 @@
 
 echo "Starting system update..."
 
+# Steps that fail are collected here and reported at the end
+FAILED=()
+
 # Update system packages via dnf
 # -y:             answer yes to every prompt
 # --allowerasing: remove conflicting packages instead of cancelling the update
 # --no-best:      if the newest version of a package can't be installed, skip it instead of cancelling the update
-sudo dnf upgrade -y --allowerasing --no-best
+sudo dnf upgrade -y --allowerasing --no-best || FAILED+=("system packages (dnf upgrade)")
 
 # Update Flatpak applications
 if command -v flatpak >/dev/null; then
-    flatpak update -y
+    flatpak update -y || FAILED+=("Flatpak apps (flatpak update)")
 fi
 
 echo ""
 echo "=========================================="
-echo "All updates completed successfully!"
+if [ ${#FAILED[@]} -eq 0 ]; then
+    echo "All updates completed successfully!"
+else
+    echo "Some updates FAILED:"
+    for step in "${FAILED[@]}"; do
+        echo "  - $step"
+    done
+    echo "Scroll up to see the error messages."
+fi
 echo "=========================================="
 echo ""
 
