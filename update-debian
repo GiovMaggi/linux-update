@@ -1,0 +1,43 @@
+#!/bin/bash
+
+echo "Starting system update..."
+
+# Refresh the package lists
+sudo apt update
+
+# Upgrade system packages via apt
+# -y:                    answer yes to every prompt
+# DEBIAN_FRONTEND=...:   never open interactive package setup dialogs
+# --force-confdef/old:   when a package ships a new config file, keep your current one
+#                        instead of asking what to do
+sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold
+
+# Update Flatpak applications
+if command -v flatpak >/dev/null; then
+    flatpak update -y
+fi
+
+echo ""
+echo "=========================================="
+echo "All updates completed successfully!"
+echo "=========================================="
+echo ""
+
+# Prompt for post-update action
+read -p "Choose action: [r]eboot / [p]oweroff / [n]othing (default): " choice
+
+case "$choice" in
+    r|reboot)
+        echo "Rebooting system..."
+        systemctl reboot
+        ;;
+    p|poweroff)
+        echo "Powering off system..."
+        systemctl poweroff
+        ;;
+    *)
+        echo "Doing nothing. Have a great day!"
+        ;;
+esac

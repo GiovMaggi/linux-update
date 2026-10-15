@@ -1,0 +1,35 @@
+#!/bin/bash
+
+echo "Starting system update..."
+
+# Update official packages, pacman, and AUR via yay
+# --noconfirm: answer every prompt with its default
+# --ask 20:    flip the two defaults that would cancel the update
+#              (4 = remove conflicting packages, 16 = skip packages with broken dependencies)
+yay -Syu --noconfirm --ask 20
+
+# Update Flatpak applications
+flatpak update -y
+
+echo ""
+echo "=========================================="
+echo "All updates completed successfully!"
+echo "=========================================="
+echo ""
+
+# Prompt for post-update action
+read -p "Choose action: [r]eboot / [p]oweroff / [n]othing (default): " choice
+
+case "$choice" in
+    r|reboot)
+        echo "Rebooting system..."
+        systemctl reboot
+        ;;
+    p|poweroff)
+        echo "Powering off system..."
+        systemctl poweroff
+        ;;
+    *)
+        echo "Doing nothing. Have a great day!"
+        ;;
+esac
