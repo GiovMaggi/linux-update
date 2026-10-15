@@ -5,11 +5,18 @@ echo "Starting system update..."
 # Steps that fail are collected here and reported at the end
 FAILED=()
 
-# Update official packages, pacman, and AUR via yay
+# Update official packages (and AUR, with yay or paru)
+# Uses yay if installed, otherwise paru, otherwise plain pacman
 # --noconfirm: answer every prompt with its default
 # --ask 20:    flip the two defaults that would cancel the update
 #              (4 = remove conflicting packages, 16 = skip packages with broken dependencies)
-yay -Syu --noconfirm --ask 20 || FAILED+=("system packages (yay -Syu)")
+if command -v yay >/dev/null; then
+    yay -Syu --noconfirm --ask 20 || FAILED+=("system packages (yay -Syu)")
+elif command -v paru >/dev/null; then
+    paru -Syu --noconfirm --ask 20 || FAILED+=("system packages (paru -Syu)")
+else
+    sudo pacman -Syu --noconfirm --ask 20 || FAILED+=("system packages (pacman -Syu)")
+fi
 
 # Update Flatpak applications
 if command -v flatpak >/dev/null; then

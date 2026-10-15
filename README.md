@@ -5,7 +5,7 @@ confirmation, then lets you reboot, power off, or do nothing.
 
 | Script | Distro | What it runs |
 |---|---|---|
-| `update-arch` | Arch-based | `yay -Syu` + `flatpak update` |
+| `update-arch` | Arch-based | `yay -Syu` (or `paru -Syu`, or `sudo pacman -Syu` if neither is installed) + `flatpak update` |
 | `update-fedora` | Fedora-based | `sudo dnf upgrade` + `flatpak update` |
 | `update-debian` | Debian/Ubuntu-based | `sudo apt update` + `sudo apt upgrade` + `flatpak update` |
 
@@ -15,7 +15,7 @@ All prompts are answered automatically. You'll only be asked for your password.
 
 Pick the line for your distro. It saves the script as `/usr/local/bin/update`.
 
-Arch (needs [yay](https://github.com/Jguer/yay)):
+Arch (uses yay if installed, otherwise paru, otherwise pacman):
 
 ```bash
 sudo curl -fsSL https://raw.githubusercontent.com/GiovMaggi/linux-update/main/update-arch -o /usr/local/bin/update && sudo chmod +x /usr/local/bin/update
