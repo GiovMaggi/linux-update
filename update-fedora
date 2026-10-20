@@ -1,5 +1,32 @@
 #!/bin/bash
 
+# Optional flag: what to do once the update is done
+#   -r  reboot without asking
+#   -p  power off without asking
+#   -n  do nothing, without asking
+# With no flag, you're asked at the end.
+usage() {
+    echo "Usage: update [-r | -p | -n]"
+    echo "  -r  reboot when done"
+    echo "  -p  power off when done"
+    echo "  -n  do nothing when done"
+    echo "  (no flag: ask when done)"
+}
+
+choice=""
+if [ $# -gt 1 ]; then
+    usage >&2
+    exit 1
+fi
+case "$1" in
+    -r) choice=r ;;
+    -p) choice=p ;;
+    -n) choice=n ;;
+    -h|--help) usage; exit 0 ;;
+    "") ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+esac
+
 echo "Starting system update..."
 
 # Steps that fail are collected here and reported at the end
@@ -30,8 +57,10 @@ fi
 echo "=========================================="
 echo ""
 
-# Prompt for post-update action
-read -p "Choose action: [r]eboot / [p]oweroff / [n]othing (default): " choice
+# Prompt for post-update action, unless a flag already chose it
+if [ -z "$choice" ]; then
+    read -p "Choose action: [r]eboot / [p]oweroff / [n]othing (default): " choice
+fi
 
 case "$choice" in
     r|reboot)

@@ -1,7 +1,7 @@
 # linux-update
 
 One command, `update`, that updates your whole system (system packages + Flatpak apps) without asking for
-confirmation, then lets you reboot, power off, or do nothing.
+confirmation, then reboots, powers off, or does nothing (you choose, or pick it up front with a flag).
 
 | Script | Distro | What it runs |
 |---|---|---|
@@ -38,3 +38,12 @@ Then just type:
 ```bash
 update
 ```
+
+At the end it asks whether to reboot, power off, or do nothing. To choose up front and not be asked, add a flag:
+
+| Command | When the update is done |
+|---|---|
+| `update` | asks you |
+| `update -r` | reboots |
+| `update -p` | powers off |
+| `update -n` | does nothing |
