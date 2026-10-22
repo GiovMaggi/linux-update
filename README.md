@@ -39,11 +39,23 @@ Then just type:
 update
 ```
 
-At the end it asks whether to reboot, power off, or do nothing. To choose up front and not be asked, add a flag:
+That updates everything. To update only part of it, name what you want:
 
-| Command | When the update is done |
+| Command | What it updates |
 |---|---|
-| `update` | asks you |
-| `update -r` | reboots |
-| `update -p` | powers off |
-| `update -n` | does nothing |
+| `update` | everything (system packages + Flatpak apps) |
+| `update main` | system packages only (Arch: pacman + AUR, Fedora: `dnf upgrade`, Debian/Ubuntu: `apt update` + `apt upgrade`) |
+| `update flatpak` | every Flatpak app only |
+| `update steam` | just that app: the system package `steam` if it's installed, otherwise every Flatpak app with `steam` in its name or ID |
+
+At the end it asks whether to reboot, power off, or do nothing. To choose up front and not be asked, add a flag
+(before or after the name, e.g. `update steam -r` or `update main -n`):
+
+| Flag | When the update is done |
+|---|---|
+| none | asks you |
+| `-r` | reboots |
+| `-p` | powers off |
+| `-n` | does nothing |
+
+`update -h` shows all of this in the terminal.

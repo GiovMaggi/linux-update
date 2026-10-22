@@ -1,54 +1,123 @@
 #!/bin/bash
 
-# Optional flag: what to do once the update is done
-#   -r  reboot without asking
-#   -p  power off without asking
-#   -n  do nothing, without asking
-# With no flag, you're asked at the end.
 usage() {
-    echo "Usage: update [-r | -p | -n]"
-    echo "  -r  reboot when done"
-    echo "  -p  power off when done"
-    echo "  -n  do nothing when done"
-    echo "  (no flag: ask when done)"
+    echo "Usage: update [main | flatpak | <app>] [-r | -p | -n]"
+    echo ""
+    echo "What to update (default: everything):"
+    echo "  main      system packages only (apt)"
+    echo "  flatpak   Flatpak apps only"
+    echo "  <app>     just that app: the system package if it's installed,"
+    echo "            otherwise every Flatpak app whose name or ID contains <app>"
+    echo ""
+    echo "What to do when done (default: ask):"
+    echo "  -r  reboot"
+    echo "  -p  power off"
+    echo "  -n  do nothing"
 }
 
+# Read what to update and what to do afterwards (flags can go before or after it)
+target=""
 choice=""
-if [ $# -gt 1 ]; then
-    usage >&2
-    exit 1
-fi
-case "$1" in
-    -r) choice=r ;;
-    -p) choice=p ;;
-    -n) choice=n ;;
-    -h|--help) usage; exit 0 ;;
-    "") ;;
-    *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
-esac
-
-echo "Starting system update..."
+for arg in "$@"; do
+    case "$arg" in
+        -r|-p|-n)
+            if [ -n "$choice" ]; then
+                echo "Use only one of -r, -p, -n" >&2; usage >&2; exit 1
+            fi
+            choice=${arg#-}
+            ;;
+        -h|--help) usage; exit 0 ;;
+        -*) echo "Unknown option: $arg" >&2; usage >&2; exit 1 ;;
+        *)
+            if [ -n "$target" ]; then
+                echo "Update one thing at a time (got '$target' and '$arg')" >&2; usage >&2; exit 1
+            fi
+            target=$arg
+            ;;
+    esac
+done
 
 # Steps that fail are collected here and reported at the end
 FAILED=()
 
-# Refresh the package lists
-sudo apt update || FAILED+=("package lists (apt update)")
-
-# Upgrade system packages via apt
+# apt options:
 # -y:                    answer yes to every prompt
-# DEBIAN_FRONTEND=...:   never open interactive package setup dialogs
 # --force-confdef/old:   when a package ships a new config file, keep your current one
 #                        instead of asking what to do
-sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y \
-    -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold \
-    || FAILED+=("system packages (apt upgrade)")
+# (DEBIAN_FRONTEND=noninteractive below: never open interactive package setup dialogs)
+APT_OPTS=(-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
 
-# Update Flatpak applications
-if command -v flatpak >/dev/null; then
+# Refresh the package lists, then upgrade system packages via apt
+update_main() {
+    sudo apt update || FAILED+=("package lists (apt update)")
+    sudo DEBIAN_FRONTEND=noninteractive apt upgrade "${APT_OPTS[@]}" \
+        || FAILED+=("system packages (apt upgrade)")
+}
+
+# Is $1 installed as a system package?
+is_installed() {
+    [ "$(dpkg-query -W -f='${Status}' "$1" 2>/dev/null)" = "install ok installed" ]
+}
+
+# Refresh the package lists, then update only the package $1
+update_package() {
+    sudo apt update || FAILED+=("package lists (apt update)")
+    sudo DEBIAN_FRONTEND=noninteractive apt install --only-upgrade "${APT_OPTS[@]}" "$1" \
+        || FAILED+=("$1 (apt install --only-upgrade $1)")
+}
+
+# Update every Flatpak app
+update_flatpak() {
     flatpak update -y || FAILED+=("Flatpak apps (flatpak update)")
-fi
+}
+
+# Installed Flatpak apps whose ID or name contains $1 (ignoring case)
+find_flatpaks() {
+    command -v flatpak >/dev/null || return
+    flatpak list --app --columns=application,name | grep -iF -- "$1" | cut -f1 | sort -u
+}
+
+case "$target" in
+    "")
+        echo "Starting system update..."
+        update_main
+        if command -v flatpak >/dev/null; then
+            update_flatpak
+        fi
+        ;;
+    main)
+        echo "Updating system packages..."
+        update_main
+        ;;
+    flatpak)
+        if ! command -v flatpak >/dev/null; then
+            echo "Flatpak is not installed. Nothing was updated." >&2; exit 1
+        fi
+        echo "Updating Flatpak apps..."
+        update_flatpak
+        ;;
+    *)
+        # System package first (also tries the name in lowercase), then Flatpak
+        pkg=""
+        if is_installed "$target"; then
+            pkg=$target
+        elif is_installed "${target,,}"; then
+            pkg=${target,,}
+        fi
+        if [ -n "$pkg" ]; then
+            echo "Updating $pkg (system package)..."
+            update_package "$pkg"
+        else
+            readarray -t apps < <(find_flatpaks "$target")
+            if [ ${#apps[@]} -eq 0 ]; then
+                echo "'$target' is not installed as a system package or a Flatpak app. Nothing was updated." >&2
+                exit 1
+            fi
+            echo "'$target' is not a system package, updating Flatpak app(s): ${apps[*]}"
+            flatpak update -y "${apps[@]}" || FAILED+=("Flatpak: ${apps[*]} (flatpak update)")
+        fi
+        ;;
+esac
 
 echo ""
 echo "=========================================="
